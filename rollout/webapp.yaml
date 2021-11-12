@@ -1,0 +1,107 @@
+---
+apiVersion: apps/v1
+kind: Rollout
+metadata:
+  name: webapp
+spec:
+  selector:
+    matchLabels:
+      app: webapp
+  replicas: 1
+  template: # template for the pods
+    metadata:
+      labels:
+        app: webapp
+        version: original
+    spec:
+      containers:
+      - name: webapp
+        image: richardchesterwood/istio-fleetman-webapp-angular:6
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: production-microservice
+        imagePullPolicy: Always
+  strategy:
+    canary:
+      trafficRouting:
+        istio:
+          virtualService: 
+            name: fleetman-webapp        # required
+            routes:
+            - primary                 # optional if there is a single route in VirtualService, required otherwise
+          destinationRule:
+            name: fleetman-webapp    # required
+            canarySubsetName: canary  # required
+            stableSubsetName: stable  # required
+      steps:
+      - setWeight: 20
+      - pause: {}
+...
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-webapp
+spec:
+  selector:
+    app: webapp
+  ports:
+    - name: http
+      port: 80
+  type: ClusterIP
+...
+---
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-webapp
+  namespace: default
+spec:
+  hosts:
+    - "fleetman.com"
+  gateways:
+    - fleetman-ingress-gateway-configuration
+  http:
+    - name: primary
+      route:
+        - destination:
+            host: fleetman-webapp
+            subset: stable
+          weight: 100
+        - destination:
+            host: fleetman-webapp
+            subset: canary
+          weight: 0
+...
+---
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: gpsingh-webapp
+  namespace: default
+spec:
+  hosts:      # which incoming host are we applying the proxy rules to???
+    - "gpsingh.com" # Copy the value in the gateway hosts - usually a Domain Name
+  gateways:
+    - fleetman-ingress-gateway-configuration
+  http:
+    - route:
+        - destination:
+            host: fleetman-webapp
+            subset: stable
+...
+---
+kind: DestinationRule
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-webapp
+  namespace: default
+spec:
+  host: fleetman-webapp
+  subsets:
+    - labels:
+        app: webapp
+      name: stable
+    - labels:
+        app: webapp
+      name: canary

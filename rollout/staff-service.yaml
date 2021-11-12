@@ -1,0 +1,101 @@
+---
+apiVersion: apps/v1
+kind: Rollout
+metadata:
+  name: staff-service
+spec:
+  selector:
+    matchLabels:
+      app: staff-service
+  replicas: 1
+  template: # template for the pods
+    metadata:
+      labels:
+        app: staff-service
+        version: safe
+    spec:
+      containers:
+      - name: staff-service
+        image: richardchesterwood/istio-fleetman-staff-service:6-placeholder
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: production-microservice
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+  strategy:
+    canary:
+      trafficRouting:
+        istio:
+          virtualService: 
+            name: fleetman-staff-service
+            routes:
+            - primary
+            - secondary
+          destinationRule:
+            name: fleetman-staff-service
+            canarySubsetName: canary
+            stableSubsetName: stable
+      steps:
+      - setWeight: 20
+      - pause: {}
+...
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-staff-service
+spec:
+  selector:
+    app: staff-service
+  ports:
+    - name: http
+      port: 8080
+  type: ClusterIP
+...
+---
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-staff-service
+  namespace: default
+spec:
+  hosts:
+    - fleetman-staff-service
+  http:
+    - name: secondary
+      match:
+        - headers:
+            x-my-header:
+              exact: canary
+      route:
+        - destination:
+            host: fleetman-staff-service
+            subset: canary
+    - name: primary
+      route:
+        - destination:
+            host: fleetman-staff-service
+            subset: stable
+          weight: 100
+        - destination:
+            host: fleetman-staff-service
+            subset: canary
+          weight: 0
+...
+---
+kind: DestinationRule
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-staff-service
+  namespace: default
+spec:
+  host: fleetman-staff-service
+  subsets:
+    - labels:
+        app: staff-service
+      name: stable
+    - labels:
+        app: staff-service
+      name: canary
+...
