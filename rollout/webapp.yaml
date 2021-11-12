@@ -26,13 +26,13 @@ spec:
       trafficRouting:
         istio:
           virtualService: 
-            name: fleetman-webapp        # required
+            name: fleetman-webapp
             routes:
-            - primary                 # optional if there is a single route in VirtualService, required otherwise
+            - primary
           destinationRule:
-            name: fleetman-webapp    # required
-            canarySubsetName: canary  # required
-            stableSubsetName: stable  # required
+            name: fleetman-webapp
+            canarySubsetName: canary
+            stableSubsetName: stable
       steps:
       - setWeight: 20
       - pause: {}
@@ -63,6 +63,19 @@ spec:
     - fleetman-ingress-gateway-configuration
   http:
     - name: primary
+      match:
+        - uri:
+          prefix: v2
+      route:
+        - destination:
+            host: fleetman-webapp
+            subset: canary
+          weight: 100
+        - destination:
+            host: fleetman-webapp
+            subset: canary
+          weight: 0
+    - name: secondary
       route:
         - destination:
             host: fleetman-webapp
@@ -70,7 +83,7 @@ spec:
           weight: 100
         - destination:
             host: fleetman-webapp
-            subset: canary
+            subset: stable
           weight: 0
 ...
 ---
