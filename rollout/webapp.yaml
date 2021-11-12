@@ -71,11 +71,6 @@ spec:
         - destination:
             host: fleetman-webapp
             subset: canary
-          weight: 100
-        - destination:
-            host: fleetman-webapp
-            subset: canary
-          weight: 0
     - name: secondary
       route:
         - destination:
