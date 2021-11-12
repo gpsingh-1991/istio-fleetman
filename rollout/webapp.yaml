@@ -66,7 +66,7 @@ spec:
     - name: primary
       match:
         - uri:
-          prefix: v2
+            prefix: v2
       route:
         - destination:
             host: fleetman-webapp
@@ -76,11 +76,6 @@ spec:
         - destination:
             host: fleetman-webapp
             subset: stable
-          weight: 100
-        - destination:
-            host: fleetman-webapp
-            subset: stable
-          weight: 0
 ...
 ---
 kind: VirtualService
