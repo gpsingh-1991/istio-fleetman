@@ -31,7 +31,6 @@ spec:
             name: fleetman-staff-service
             routes:
             - primary
-            - secondary
           destinationRule:
             name: fleetman-staff-service
             canarySubsetName: canary
